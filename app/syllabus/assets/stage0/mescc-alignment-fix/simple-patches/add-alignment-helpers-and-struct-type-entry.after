@@ -1,0 +1,68 @@
+  (cons `(tag ,name) (make-type 'enum 4 fields)))
+
+(define (struct->type-entry info name fields)
+  (let ((size (fields-total-size fields info)))
+    (cons `(tag ,name) (make-type 'struct size fields))))
+
+(define (union->type-entry info name fields)
+  (let ((size (apply max (map (compose (cut ->size <> info) cdr) fields))))
+    (cons `(tag ,name) (make-type 'union size fields))))
+
+;; Real x86-64 SysV struct/union layout needs natural alignment: a
+;; member is placed at the next offset that is a multiple of its own
+;; alignment, and the whole aggregate's size is rounded up to a
+;; multiple of its own (largest-member) alignment. This file had no
+;; alignment logic at all -- every struct/union size and field offset
+;; below was a plain running sum of member sizes, silently wrong for
+;; any struct mixing differently-sized members (e.g. an int followed
+;; by a pointer). A real, natural alignment for a scalar type on this
+;; target equals its own size (1/2/4/8/16 bytes); for an aggregate, it
+;; is the largest alignment among its members; for an array, it is its
+;; element's alignment.
+(define (align-up n a)
+  (if (<= a 1) n
+      (* (quotient (+ n (- a 1)) a) a)))
+
+(define (type-align o info)
+  (cond ((and (type? o) (eq? (type:type o) 'struct))
+         (apply max 1 (map (cut field-align <> info) (struct->fields o))))
+        ((and (type? o) (eq? (type:type o) 'union))
+         (apply max 1 (map (cut field-align <> info) (struct->fields o))))
+        ((type? o) (type:size o))
+        ((pointer? o) 8)
+        ((c-array? o) (type-align (c-array:type o) info))
+        ((local? o) (type-align (local:type o) info))
+        ((global? o) (type-align (global:type o) info))
+        ((bit-field? o) (type-align (bit-field:type o) info))
+        ((and (pair? o) (pair? (car o)) (bit-field? (cdar o))) (type-align (cdar o) info))
+        ((string? o) (type-align (get-type o info) info))
+        (else 1)))
+
+(define (field-align o info)
+  (pmatch o
+    ((struct . ,type) (type-align type info))
+    ((union . ,type) (type-align type info))
+    ((bits . ,bits) 1)
+    ((,name . ,type) (type-align type info))
+    (_ 1)))
+
+;; Correct, alignment-padded total size of a field list (a struct's
+;; real size, not the naive sum every call site here used to compute).
+(define (fields-total-size fields info)
+  (let loop ((fields fields) (offset 0) (max-align 1))
+    (if (null? fields)
+        (align-up offset (max max-align 1))
+        (let* ((f (car fields)))
+          (if (and (pair? f) (eq? (car f) 'bits))
+              ;; bitfields share space at the current offset -- keep
+              ;; the existing, already-special-cased packing behavior
+              ;; untouched, just don't let them affect alignment.
+              (loop (cdr fields) offset max-align)
+              (let* ((a (field-align f info))
+                     (s (field:size f info))
+                     (aligned-offset (align-up offset (max a 1))))
+                (loop (cdr fields) (+ aligned-offset s) (max max-align a))))))))
+
+(define (signed? o)
+  (let ((type (->type o)))
+    (cond ((type? type) (eq? (type:type type) 'signed))

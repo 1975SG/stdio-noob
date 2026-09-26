@@ -1,0 +1,7 @@
+                         `((#:address ,var)))))
+    ((initzer-list . ,inits)
+     (cond ((structured-type? type)
+            (map (cut init->data <> <> info) (map cdr (struct->init-fields type)) inits))
+           ((c-array? type)
+            (let ((size (->size type info)))
+              (array-init->data type size `(initzer ,o) info)))

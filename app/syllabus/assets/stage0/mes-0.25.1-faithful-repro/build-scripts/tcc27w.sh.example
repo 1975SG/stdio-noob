@@ -1,0 +1,6 @@
+#!/bin/sh
+# Wrapper used as CC.  `tcc -ar` requires -ar to be the FIRST option, so do not
+# prepend anything then; otherwise add the define Mes's stdint.h needs.
+TCC=/path/to/tcc-0.9.27
+if [ "$1" = "-ar" ]; then exec $TCC "$@"; fi
+exec $TCC -D __SIZEOF_LONG_LONG__=8 "$@"

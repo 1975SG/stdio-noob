@@ -1,0 +1,12 @@
+
+    ("float" . ,(make-type 'float 4 #f))
+    ("double" . ,(make-type 'float 8 #f))
+    ;; real x86-64 SysV size AND alignment for long double is 16
+    ;; (80-bit x87 extended precision, padded) -- this table had it
+    ;; sized identically to plain "double" (8), which silently
+    ;; corrupts the size/alignment of any struct/union that embeds a
+    ;; long double, e.g. TinyCC's own CValue/SValue.
+    ("long double" . ,(make-type 'float 16 #f))
+
+    ("short int" . ,(make-type 'signed 2 #f))
+    ("unsigned short int" . ,(make-type 'unsigned 2 #f))

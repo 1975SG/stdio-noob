@@ -1,0 +1,17 @@
+                    sym->st_value += s1->sections[sym->st_shndx]->sh_addr;
+                }
+            }
+        } else if (file_type == TCC_OUTPUT_EXE) {
+            /* Statically linked executable: no .dynamic section, but
+               build_got_entries() still creates a real PLT entry for any
+               R_X86_64_PLT32 relocation to a non-static function (real,
+               unconditional upstream behavior -- see gotplt_entry_type()).
+               relocate_plt() is the only code that ever patches those
+               stubs with their real addresses, and it only touches
+               s1->got/s1->plt, not the .dynamic section, so it is safe
+               to run here too. Without this, a fully static binary that
+               calls any ordinary (non-static) function segfaults on a
+               PLT stub that was created but never patched. */
+            relocate_plt(s1);
+        }
+    }

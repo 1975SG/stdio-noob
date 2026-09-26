@@ -1,0 +1,13 @@
+  (cons `(tag ,name) (make-type 'enum 4 fields)))
+
+(define (struct->type-entry info name fields)
+  (let ((size (apply + (map (compose (cut ->size <> info) cdr) fields))))
+    (cons `(tag ,name) (make-type 'struct size fields))))
+
+(define (union->type-entry info name fields)
+  (let ((size (apply max (map (compose (cut ->size <> info) cdr) fields))))
+    (cons `(tag ,name) (make-type 'union size fields))))
+
+(define (signed? o)
+  (let ((type (->type o)))
+    (cond ((type? type) (eq? (type:type type) 'signed))

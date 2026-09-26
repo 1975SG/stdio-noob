@@ -1,0 +1,11 @@
+         (int->bv type (expr->number info fixed) info)))
+    ((initzer (initzer-list . ,inits))
+     (cond ((structured-type? type)
+            (let* ((fields (map cdr (struct->init-fields type)))
+                   (missing (max 0 (- (length fields) (length inits))))
+                   (inits (append inits
+                                  (map (const '(fixed "0")) (iota missing)))))
+              (map (cut array-init-element->data <> <> info) fields inits)))
+           ((c-array? type)
+            (let* ((missing (max 0 (- (c-array:count type) (length inits))))
+                   (inits (append inits

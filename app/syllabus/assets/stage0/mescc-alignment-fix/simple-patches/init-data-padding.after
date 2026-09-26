@@ -1,0 +1,27 @@
+                         `((#:address ,var)))))
+    ((initzer-list . ,inits)
+     (cond ((structured-type? type)
+            ;; Field data used to be emitted back-to-back with no
+            ;; padding, even though field-offset (once fixed) expects
+            ;; real alignment gaps between members -- silently
+            ;; mis-laying-out any static struct/union initializer
+            ;; (e.g. TCC's own const option tables) relative to how
+            ;; its own fields get read back. Insert the same padding
+            ;; here that fields-total-size/field-offset now assume.
+            (let ((total-size (->size type info)))
+              (let loop ((fields (struct->init-fields type)) (inits inits) (offset 0))
+                (if (null? fields)
+                    (let ((pad (- total-size offset)))
+                      (if (> pad 0) (list (string->list (make-string pad #\nul))) '()))
+                    (let* ((f (car fields))
+                           (a (field-align f info))
+                           (s (field:size f info))
+                           (aligned-offset (align-up offset (max a 1)))
+                           (pad (- aligned-offset offset)))
+                      (append (if (> pad 0) (list (string->list (make-string pad #\nul))) '())
+                              (list (init->data (cdr f) (car inits) info))
+                              (loop (cdr fields) (cdr inits) (+ aligned-offset s)))))))
+            )
+           ((c-array? type)
+            (let ((size (->size type info)))
+              (array-init->data type size `(initzer ,o) info)))

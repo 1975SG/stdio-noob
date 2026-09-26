@@ -1,0 +1,7 @@
+
+(define (field:size o info)
+  (pmatch o
+    ((struct . ,type) (apply + (map (cut field:size <> info) (struct->fields type))))
+    ((union . ,type) (apply max (map (cut field:size <> info) (struct->fields type))))
+    ((,name . ,type) (->size type info))
+    (_ (error (format #f "field:size: ~s\n" o)))))

@@ -1,0 +1,49 @@
+/* -*-comment-start: "//";comment-end:""-*-
+ * GNU Mes --- Maxwell Equations of Software
+ * Copyright © 2018 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+ *
+ * This file is part of GNU Mes.
+ *
+ * GNU Mes is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * GNU Mes is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Mes.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <stdio.h>
+
+#include <stdio.h>
+#include <unistd.h>
+
+/* The old version (fclose, then fopen) only redirected stdout by accident:
+   open() reused the lowest free descriptor, 1.  fopen now moves descriptors
+   0..2 out of the way (a FILE * is the descriptor, so 0 would be NULL), so
+   keep a standard stream on its own descriptor with dup2. */
+FILE *
+freopen (char const *file_name, char const *opentype, FILE * stream)
+{
+  int fd = (int) (long) stream;
+  if (fd >= 0 && fd <= 2)
+    {
+      FILE *opened = fopen (file_name, opentype);
+      if (opened == 0)
+        return 0;
+      int nfd = (int) (long) opened;
+      if (nfd != fd)
+        {
+          dup2 (nfd, fd);
+          close (nfd);
+        }
+      return stream;
+    }
+  fclose (stream);
+  return fopen (file_name, opentype);
+}

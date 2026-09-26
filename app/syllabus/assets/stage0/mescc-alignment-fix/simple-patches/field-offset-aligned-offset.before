@@ -1,0 +1,12 @@
+      (let ((fields (type:description struct)))
+        (let loop ((fields fields) (offset 0))
+          (if (null? fields) (error (format #f "no such field: ~a in ~s" field struct))
+              (let ((f (car fields)))
+                (cond ((equal? (car f) field) offset)
+                      ((and (eq? (car f) 'struct) (type? (cdr f)))
+                       (let ((fields (type:description (cdr f))))
+                         (find (lambda (x) (equal? (car x) field)) fields)
+                         (apply + (cons offset
+                                        (map (cut field:size <> info)
+                                             (member field (reverse fields)
+                                                     (lambda (a b)

@@ -1,0 +1,92 @@
+/* -*-comment-start: "//";comment-end:""-*-
+ * GNU Mes --- Maxwell Equations of Software
+ * Copyright © 2016,2017,2018,2019 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+ *
+ * This file is part of GNU Mes.
+ *
+ * GNU Mes is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * GNU Mes is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Mes.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <mes/lib.h>
+
+static int
+abtod_digit (int c)
+{
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F')
+    return c - 'A' + 10;
+  return 99;
+}
+
+/* The fractional digits were parsed as one integer and divided by the
+   radix, so "3.14159" became 3 + 14159/10.  Scale by the digit count. */
+double
+abtod (char const **p, int base)
+{
+  char const *s = *p;
+  int sign_p = 0;
+  if (!base)
+    base = 10;
+  double dbase = base;
+  /* The bootstrap compilers up to tcc-boot2 cannot fold an int CONSTANT to
+     double, so `double d = 0;` and `double scale = 1;` come out as garbage
+     there, and a strtod built by them fails on every fraction or exponent.
+     Derive 0 and 1 from a runtime double instead. */
+  double d = dbase - dbase;
+  if (*s == '-')
+    {
+      sign_p = 1;
+      s++;
+    }
+  else if (*s == '+')
+    s++;
+  while (abtod_digit (*s) < base)
+    {
+      d = d * dbase + abtod_digit (*s);
+      s++;
+    }
+  if (*s == '.')
+    {
+      s++;
+      double scale = dbase / dbase;
+      while (abtod_digit (*s) < base)
+        {
+          d = d * dbase + abtod_digit (*s);
+          scale = scale * dbase;
+          s++;
+        }
+      d = d / scale;
+    }
+  long e = 0;
+  if (*s == 'e' || *s == 'E')
+    {
+      s++;
+      e = abtol (&s, base);
+    }
+  while (e < 0)
+    {
+      d = d / dbase;
+      e++;
+    }
+  while (e > 0)
+    {
+      d = d * dbase;
+      e--;
+    }
+  *p = s;
+  return sign_p ? -d : d;
+}

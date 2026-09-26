@@ -1,0 +1,102 @@
+/* -*-comment-start: "//";comment-end:""-*-
+ * GNU Mes --- Maxwell Equations of Software
+ * Copyright © 2017,2018 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+ * Copyright © 2021 Paul Dersey <pdersey@gmail.com>
+ *
+ * This file is part of GNU Mes.
+ *
+ * GNU Mes is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * GNU Mes is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Mes.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <stdlib.h>
+#include <string.h>
+
+/* The previous implementation was a quicksort that treated an element equal
+   to the pivot as "already in place" without moving it, so any array with
+   duplicate keys came back unsorted (linking with ld sorts sections that share
+   an address).  This is a bottom-up merge sort: correct for duplicates,
+   stable, and O(n log n); if the scratch buffer cannot be allocated it falls
+   back to an insertion sort. */
+
+static void
+qsort_insertion (char *base, size_t count, size_t size,
+                 int (*compare) (void const *, void const *))
+{
+  for (size_t i = 1; i < count; i++)
+    {
+      size_t j = i;
+      while (j > 0 && compare (base + (j - 1) * size, base + j * size) > 0)
+        {
+          char *pa = base + (j - 1) * size;
+          char *pb = base + j * size;
+          for (size_t k = 0; k < size; k++)
+            {
+              char tmp = pa[k];
+              pa[k] = pb[k];
+              pb[k] = tmp;
+            }
+          j--;
+        }
+    }
+}
+
+void
+qsort (void *base, size_t count, size_t size, int (*compare) (void const *, void const *))
+{
+  if (count < 2 || size == 0)
+    return;
+  char *tmp = malloc (count * size);
+  if (tmp == 0)
+    {
+      qsort_insertion (base, count, size, compare);
+      return;
+    }
+  char *src = base;
+  char *dst = tmp;
+  for (size_t width = 1; width < count; width *= 2)
+    {
+      for (size_t lo = 0; lo < count; lo += 2 * width)
+        {
+          size_t mid = lo + width < count ? lo + width : count;
+          size_t hi = lo + 2 * width < count ? lo + 2 * width : count;
+          size_t i = lo;
+          size_t j = mid;
+          size_t k = lo;
+          while (i < mid && j < hi)
+            {
+              if (compare (src + i * size, src + j * size) <= 0)
+                {
+                  memcpy (dst + k * size, src + i * size, size);
+                  i++;
+                }
+              else
+                {
+                  memcpy (dst + k * size, src + j * size, size);
+                  j++;
+                }
+              k++;
+            }
+          if (i < mid)
+            memcpy (dst + k * size, src + i * size, (mid - i) * size);
+          else if (j < hi)
+            memcpy (dst + k * size, src + j * size, (hi - j) * size);
+        }
+      char *t = src;
+      src = dst;
+      dst = t;
+    }
+  if (src != (char *) base)
+    memcpy (base, src, count * size);
+  free (tmp);
+}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>stdio::noob app-shell prototype</title>
+  <link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; }
+    #terminal { width: 45vw; height: 100vh; box-sizing: border-box; padding: 4px; }
+  </style>
+</head>
+<body>
+  <div id="terminal"></div>
+  <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script>
+    const term = new Terminal({ cursorBlink: true, fontSize: 14 });
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('terminal'));
+    fitAddon.fit();
+
+    window.ptyBridge.onData((data) => term.write(data));
+    term.onData((data) => window.ptyBridge.write(data));
+    window.addEventListener('resize', () => fitAddon.fit());
+    window.ptyBridge.resize(term.cols, term.rows);
+  </script>
+</body>
+</html>

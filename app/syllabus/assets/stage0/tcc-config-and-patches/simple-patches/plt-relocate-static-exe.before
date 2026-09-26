@@ -1,0 +1,5 @@
+                    sym->st_value += s1->sections[sym->st_shndx]->sh_addr;
+                }
+            }
+        }
+    }

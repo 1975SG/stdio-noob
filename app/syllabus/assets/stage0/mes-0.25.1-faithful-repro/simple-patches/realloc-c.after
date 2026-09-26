@@ -1,0 +1,55 @@
+/* -*-comment-start: "//";comment-end:""-*-
+ * GNU Mes --- Maxwell Equations of Software
+ * Copyright © 2016,2017,2018,2019 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+ *
+ * This file is part of GNU Mes.
+ *
+ * GNU Mes is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * GNU Mes is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Mes.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <stdlib.h>
+#include <string.h>
+
+#include <stddef.h>
+
+#if __TINYC__
+void *
+realloc (void *ptr, size_t size)
+{
+  if (ptr == 0)
+    return malloc (size);
+  size_t capacity = (size_t) 1 << *(size_t *) ((char *) ptr - 16);
+  if (size <= capacity)
+    return ptr;
+  void *new = malloc (size);
+  if (new != 0)
+    {
+      memcpy (new, ptr, capacity);
+      free (ptr);
+    }
+  return new;
+}
+#else
+void *
+realloc (void *ptr, size_t size)
+{
+  void *new = malloc (size);
+  if (ptr != 0 && new != 0)
+    {
+      memcpy (new, ptr, size);
+      free (ptr);
+    }
+  return new;
+}
+#endif // ! __TINYC__

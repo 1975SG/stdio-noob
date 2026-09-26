@@ -1,0 +1,3 @@
+    (_ (let* ((info (init->r o info))
+              (info (append-text info (r->local+n-text info local n))))
+         (free-register info)))))

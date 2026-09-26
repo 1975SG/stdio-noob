@@ -1,0 +1,23 @@
+    (_ (if (structured-type? (local:type local))
+           ;; A struct/union-typed local initialized directly from a
+           ;; plain expression, not a {...} initializer-list (e.g. real
+           ;; TCC's own `SValue tmp = vtop[0];`) -- r->local+n-text
+           ;; below only knows scalar sizes (0/1/2/4 bytes) and falls
+           ;; back to a single bogus register-width store for anything
+           ;; else, silently truncating the copy. Same fix shape as
+           ;; init-struct-field: evaluate the initializer as a source
+           ;; address, the local's own address as the destination, and
+           ;; do a real memory-to-memory copy of the whole struct.
+           (let* ((info (expr->register o info))
+                  (info (allocate-register info))
+                  (info (append-text info (local->r local info)))
+                  (info (if (zero? n) info
+                            (append-text info (wrap-as (as info 'r+value n)))))
+                  (size (->size (local:type local) info))
+                  (info (r0->r1-mem*n info size size))
+                  (info (free-register info))
+                  (info (free-register info)))
+             info)
+           (let* ((info (init->r o info))
+                  (info (append-text info (r->local+n-text info local n))))
+             (free-register info))))))

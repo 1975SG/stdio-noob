@@ -1,0 +1,27 @@
+         (int->bv type (expr->number info fixed) info)))
+    ((initzer (initzer-list . ,inits))
+     (cond ((structured-type? type)
+            ;; Same missing-padding bug as init->data's structured-type
+            ;; branch, for the array-of-struct case (e.g. TCC's own
+            ;; const option tables, declared as an array of structs).
+            (let* ((all-fields (struct->init-fields type))
+                   (fields (map cdr all-fields))
+                   (missing (max 0 (- (length fields) (length inits))))
+                   (inits (append inits
+                                  (map (const '(fixed "0")) (iota missing))))
+                   (total-size (->size type info)))
+              (let loop ((all-fields all-fields) (inits inits) (offset 0))
+                (if (null? all-fields)
+                    (let ((pad (- total-size offset)))
+                      (if (> pad 0) (list (string->list (make-string pad #\nul))) '()))
+                    (let* ((f (car all-fields))
+                           (a (field-align f info))
+                           (s (field:size f info))
+                           (aligned-offset (align-up offset (max a 1)))
+                           (pad (- aligned-offset offset)))
+                      (append (if (> pad 0) (list (string->list (make-string pad #\nul))) '())
+                              (list (array-init-element->data (cdr f) (car inits) info))
+                              (loop (cdr all-fields) (cdr inits) (+ aligned-offset s))))))))
+           ((c-array? type)
+            (let* ((missing (max 0 (- (c-array:count type) (length inits))))
+                   (inits (append inits

@@ -1,0 +1,9 @@
+                      ((and (eq? (car f) 'union) (type? (cdr f))
+                            (let ((fields (struct->fields (cdr f))))
+                              (and (find (lambda (x) (equal? (car x) field)) fields)
+                                   aligned-offset))))
+                      ((and (eq? (car f) 'bits) (assoc-ref (cdr f) field)) aligned-offset)
+                      (else (loop (cdr fields) (+ aligned-offset (field:size f info)))))))))))
+
+(define (field-pointer info struct field)
+  (let ((field (field-field info struct field)))
