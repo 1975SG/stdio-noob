@@ -62,19 +62,9 @@ learner. Takes a couple of minutes; when its done you have a
 
 bootable `golden-base.qcow2`.
 
-I never touch `base.qcow2` directly after this. Its real
-
-credentials written down below. Testing or
-
-debugging needs its fresh disposable copy, built the same way.
-
-PS: PW for the user in the alpine buid are below. Root
-
-REDACTED-ROOT-PW
-
-user: noob
-
-REDACTED-USER-PW
+I never touch `base.qcow2` directly after.
+The golden-base does not boot on older systems and therefore removed untill an end to end working version is shipped. 
+Testing or debugging needs its fresh disposable copy, built the same way.
 
 ## 2. Launch the app
 
